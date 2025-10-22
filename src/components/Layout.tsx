@@ -73,32 +73,12 @@ export function Layout({ children }: LayoutProps) {
                 )}
                 
                 {(user.role === 'admin' || user.role === 'superadmin') && (
-                  <>
-                    <Link 
-                      to={user.role === 'superadmin' ? '/superadmin' : '/admin'}
-                      className="relative px-4 py-2 text-foreground/80 hover:text-foreground transition-colors after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-orange-500 after:scale-x-0 after:origin-left after:transition-transform hover:after:scale-x-100"
-                    >
-                      Dashboard
-                    </Link>
-                    <Link 
-                      to="/admin/users"
-                      className="relative px-4 py-2 text-foreground/80 hover:text-foreground transition-colors after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-orange-500 after:scale-x-0 after:origin-left after:transition-transform hover:after:scale-x-100"
-                    >
-                      Users
-                    </Link>
-                    <Link 
-                      to="/admin/publishers"
-                      className="relative px-4 py-2 text-foreground/80 hover:text-foreground transition-colors after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-orange-500 after:scale-x-0 after:origin-left after:transition-transform hover:after:scale-x-100"
-                    >
-                      Publishers
-                    </Link>
-                    <Link 
-                      to="/admin/analytics"
-                      className="relative px-4 py-2 text-foreground/80 hover:text-foreground transition-colors after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-orange-500 after:scale-x-0 after:origin-left after:transition-transform hover:after:scale-x-100"
-                    >
-                      Analytics
-                    </Link>
-                  </>
+                  <Link to={user.role === 'superadmin' ? '/superadmin' : '/admin'}>
+                    <Button variant="ghost" size="sm" className="gap-2">
+                      <Settings className="h-4 w-4" />
+                      Admin
+                    </Button>
+                  </Link>
                 )}
 
                 <DropdownMenu>
