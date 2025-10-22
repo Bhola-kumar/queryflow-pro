@@ -199,84 +199,64 @@ export default function UserDashboard() {
         </div>
 
         <ResizablePanelGroup direction="horizontal" className="flex-1">
-          <ResizablePanel defaultSize={35} minSize={25}>
+          <ResizablePanel defaultSize={50} minSize={30}>
             <ScrollArea className="h-full">
-              <div className="p-4 space-y-2">
+              <div className="p-4 space-y-3">
                 {Object.keys(groupedTemplates).length === 0 ? (
                   <Card className="p-8 text-center">
                     <p className="text-muted-foreground">No templates found</p>
                   </Card>
                 ) : (
                   Object.entries(groupedTemplates).map(([type, subgroups]) => (
-                    <div key={type} className="space-y-1">
-                      <button
-                        onClick={() => toggleGroup(type)}
-                        className="w-full flex items-center gap-2 p-3 rounded-lg hover:bg-accent transition-colors text-left font-semibold"
-                      >
-                        {expandedGroups.has(type) ? (
-                          <ChevronDown className="h-4 w-4 text-primary" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                        {type}
-                        <Badge variant="secondary" className="ml-auto">
-                          {Object.values(subgroups).flat().length}
-                        </Badge>
-                      </button>
-                      
-                      {expandedGroups.has(type) && (
-                        <div className="ml-6 space-y-1">
-                          {Object.entries(subgroups).map(([subheading, items]) => (
-                            <div key={subheading} className="space-y-1">
-                              {items.length === 1 && subheading === 'General' ? (
-                                <button
-                                  onClick={() => setSelectedTemplate(items[0])}
-                                  className={`w-full text-left p-2 px-3 rounded-md transition-colors ${
-                                    selectedTemplate?.id === items[0].id
-                                      ? 'bg-primary/20 text-primary border-l-2 border-primary'
-                                      : 'hover:bg-accent'
-                                  }`}
-                                >
-                                  {items[0].doc_name}
-                                </button>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => toggleGroup(`${type}-${subheading}`)}
-                                    className="w-full flex items-center gap-2 p-2 px-3 rounded-md hover:bg-accent/50 transition-colors text-left text-sm font-medium"
-                                  >
-                                    {expandedGroups.has(`${type}-${subheading}`) ? (
-                                      <ChevronDown className="h-3 w-3" />
-                                    ) : (
-                                      <ChevronRight className="h-3 w-3" />
-                                    )}
-                                    {subheading}
-                                  </button>
-                                  
-                                  {expandedGroups.has(`${type}-${subheading}`) && (
-                                    <div className="ml-5 space-y-1">
-                                      {items.map((template) => (
-                                        <button
-                                          key={template.id}
-                                          onClick={() => setSelectedTemplate(template)}
-                                          className={`w-full text-left p-2 px-3 rounded-md transition-colors text-sm ${
-                                            selectedTemplate?.id === template.id
-                                              ? 'bg-primary/20 text-primary border-l-2 border-primary'
-                                              : 'hover:bg-accent'
-                                          }`}
-                                        >
-                                          {template.doc_name}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <Card key={type} className="p-4 hover:shadow-md transition-shadow">
+                      <div className="mb-3">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          {type}
+                          <Badge variant="secondary" className="ml-auto">
+                            {Object.values(subgroups).flat().length}
+                          </Badge>
+                        </h3>
+                      </div>
+                      <div className="space-y-2">
+                        {Object.entries(subgroups).map(([subheading, items]) => (
+                          <div key={subheading} className="space-y-1">
+                            {items.length === 1 && subheading === 'General' ? (
+                              <button
+                                onClick={() => setSelectedTemplate(items[0])}
+                                className={`w-full text-left p-3 rounded-md transition-all ${
+                                  selectedTemplate?.id === items[0].id
+                                    ? 'bg-primary/20 text-primary border-l-4 border-primary shadow-sm'
+                                    : 'bg-accent/30 hover:bg-accent/50'
+                                }`}
+                              >
+                                <span className="font-medium">{items[0].doc_name}</span>
+                              </button>
+                            ) : (
+                              <div className="border border-border rounded-md overflow-hidden">
+                                <div className="bg-accent/20 px-3 py-2 font-medium text-sm border-b border-border">
+                                  {subheading}
+                                </div>
+                                <div className="p-2 space-y-1">
+                                  {items.map((template) => (
+                                    <button
+                                      key={template.id}
+                                      onClick={() => setSelectedTemplate(template)}
+                                      className={`w-full text-left p-2 px-3 rounded-md transition-all text-sm ${
+                                        selectedTemplate?.id === template.id
+                                          ? 'bg-primary/20 text-primary border-l-4 border-primary shadow-sm'
+                                          : 'bg-background hover:bg-accent/30'
+                                      }`}
+                                    >
+                                      {template.doc_name}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
                   ))
                 )}
               </div>
