@@ -7,8 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
 import { Publisher } from '@/types';
-import { ShieldCheck, UserPlus, Building, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ShieldCheck, UserPlus, Building } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -20,7 +19,6 @@ import {
 export default function RequestRole() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [requestedRole, setRequestedRole] = useState<'admin' | 'superadmin'>('admin');
   const [publishers, setPublishers] = useState<Publisher[]>([]);
   const [selectedPublisher, setSelectedPublisher] = useState<string>('');
@@ -81,16 +79,7 @@ export default function RequestRole() {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto animate-fade-in">
-        <Card className="p-8 bg-card/50 backdrop-blur-sm relative">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(-1)}
-            className="absolute top-4 right-4 h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-          
+        <Card className="p-8 bg-card/50 backdrop-blur-sm">
           <div className="flex items-center gap-3 mb-6">
             <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
               <UserPlus className="h-6 w-6 text-primary" />
