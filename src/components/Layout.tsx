@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Database, LogOut, User, Settings, FileText } from 'lucide-react';
+import { Database, LogOut, Settings, FileText } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -19,6 +19,9 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  const isTemplatesActive = location.pathname === '/dashboard';
 
   const handleLogout = () => {
     logout();
@@ -50,12 +53,24 @@ export function Layout({ children }: LayoutProps) {
 
             {user && (
               <div className="flex items-center space-x-4">
-                <Link to="/dashboard">
-                  <Button variant="ghost" size="sm" className="gap-2">
+                {user.role === 'user' && (
+                  <button
+                    onClick={() => navigate('/dashboard')}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all relative group ${
+                      isTemplatesActive 
+                        ? 'text-primary' 
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
                     <FileText className="h-4 w-4" />
                     Templates
-                  </Button>
-                </Link>
+                    <span 
+                      className={`absolute bottom-0 left-0 w-full h-0.5 bg-primary transition-transform origin-left ${
+                        isTemplatesActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+                      }`}
+                    />
+                  </button>
+                )}
                 
                 {(user.role === 'admin' || user.role === 'superadmin') && (
                   <Link to={user.role === 'superadmin' ? '/superadmin' : '/admin'}>
@@ -75,7 +90,7 @@ export function Layout({ children }: LayoutProps) {
                       <span className="hidden sm:inline">{user.full_name}</span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuContent align="end" className="w-56 bg-popover z-50">
                     <DropdownMenuLabel>
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium">{user.full_name}</p>

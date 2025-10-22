@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { DocumentItem } from '@/types';
 import { apiClient } from '@/lib/api';
-import { Copy, Search, FileText, Filter } from 'lucide-react';
+import { Copy, Search, Filter, ChevronRight, ChevronDown } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -15,6 +15,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+interface GroupedTemplates {
+  [key: string]: {
+    [subheading: string]: DocumentItem[];
+  };
+}
 
 export default function UserDashboard() {
   const [templates, setTemplates] = useState<DocumentItem[]>([]);
@@ -22,6 +34,13 @@ export default function UserDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [selectedTemplate, setSelectedTemplate] = useState<DocumentItem | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [placeholders, setPlaceholders] = useState<{ [key: string]: string }>({
+    ticket_id: '',
+    sender_name: '',
+    receiver_name: '',
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -32,6 +51,12 @@ export default function UserDashboard() {
     filterTemplates();
   }, [searchQuery, selectedType, templates]);
 
+  useEffect(() => {
+    if (filteredTemplates.length > 0 && !selectedTemplate) {
+      setSelectedTemplate(filteredTemplates[0]);
+    }
+  }, [filteredTemplates]);
+
   const fetchTemplates = async () => {
     try {
       const data = await apiClient.getTemplates() as DocumentItem[];
@@ -39,7 +64,7 @@ export default function UserDashboard() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to load templates. Please ensure your backend is running.',
+        description: 'Failed to load templates.',
         variant: 'destructive',
       });
     } finally {
@@ -66,13 +91,46 @@ export default function UserDashboard() {
     setFilteredTemplates(filtered);
   };
 
-  const handleCopyTemplate = async (template: DocumentItem) => {
+  const groupTemplates = (templates: DocumentItem[]): GroupedTemplates => {
+    const grouped: GroupedTemplates = {};
+    
+    templates.forEach((template) => {
+      const type = template.query_type;
+      const subheading = template.specific_query_heading || 'General';
+      
+      if (!grouped[type]) {
+        grouped[type] = {};
+      }
+      
+      if (!grouped[type][subheading]) {
+        grouped[type][subheading] = [];
+      }
+      
+      grouped[type][subheading].push(template);
+    });
+    
+    return grouped;
+  };
+
+  const toggleGroup = (groupKey: string) => {
+    const newExpanded = new Set(expandedGroups);
+    if (newExpanded.has(groupKey)) {
+      newExpanded.delete(groupKey);
+    } else {
+      newExpanded.add(groupKey);
+    }
+    setExpandedGroups(newExpanded);
+  };
+
+  const handleCopyTemplate = async (templateText: string) => {
     try {
-      await navigator.clipboard.writeText(template.template_text);
-      await apiClient.copyTemplate(template.id);
+      await navigator.clipboard.writeText(templateText);
+      if (selectedTemplate) {
+        await apiClient.copyTemplate(selectedTemplate.id);
+      }
       toast({
         title: 'Template Copied!',
-        description: `"${template.doc_name}" has been copied to your clipboard.`,
+        description: 'Template has been copied to your clipboard.',
       });
     } catch (error) {
       toast({
@@ -83,7 +141,20 @@ export default function UserDashboard() {
     }
   };
 
+  const replacePlaceholders = (text: string): string => {
+    let result = text;
+    Object.entries(placeholders).forEach(([key, value]) => {
+      if (value) {
+        const regex = new RegExp(`\\{${key}\\}`, 'gi');
+        result = result.replace(regex, value);
+      }
+    });
+    return result;
+  };
+
   const queryTypes = ['all', ...Array.from(new Set(templates.map((t) => t.query_type)))];
+  const groupedTemplates = groupTemplates(filteredTemplates);
+  const processedTemplateText = selectedTemplate ? replacePlaceholders(selectedTemplate.template_text) : '';
 
   if (loading) {
     return (
@@ -97,90 +168,199 @@ export default function UserDashboard() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto animate-fade-in">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Query Templates</h1>
-          <p className="text-muted-foreground">
-            Browse and copy templates for your database queries
-          </p>
-        </div>
-
-        {/* Search and Filter Bar */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search templates..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+      <div className="h-[calc(100vh-4rem)] flex flex-col">
+        <div className="p-6 border-b border-border">
+          <h1 className="text-3xl font-bold mb-4">Query Templates</h1>
+          
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search templates..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={selectedType} onValueChange={setSelectedType}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                {queryTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type === 'all' ? 'All Types' : type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={selectedType} onValueChange={setSelectedType}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              {queryTypes.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {type === 'all' ? 'All Types' : type}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
-        {/* Templates Grid */}
-        {filteredTemplates.length === 0 ? (
-          <Card className="p-12 text-center bg-card/50">
-            <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-xl font-semibold mb-2">No Templates Found</h3>
-            <p className="text-muted-foreground">
-              {templates.length === 0
-                ? 'No templates available yet. Contact your admin to add templates.'
-                : 'Try adjusting your search or filter criteria.'}
-            </p>
-          </Card>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredTemplates.map((template) => (
-              <Card
-                key={template.id}
-                className="p-6 bg-card/50 backdrop-blur-sm hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/10"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-1">{template.doc_name}</h3>
-                    {template.specific_query_heading && (
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {template.specific_query_heading}
-                      </p>
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
+          <ResizablePanel defaultSize={35} minSize={25}>
+            <ScrollArea className="h-full">
+              <div className="p-4 space-y-2">
+                {Object.keys(groupedTemplates).length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <p className="text-muted-foreground">No templates found</p>
+                  </Card>
+                ) : (
+                  Object.entries(groupedTemplates).map(([type, subgroups]) => (
+                    <div key={type} className="space-y-1">
+                      <button
+                        onClick={() => toggleGroup(type)}
+                        className="w-full flex items-center gap-2 p-3 rounded-lg hover:bg-accent transition-colors text-left font-semibold"
+                      >
+                        {expandedGroups.has(type) ? (
+                          <ChevronDown className="h-4 w-4 text-primary" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                        {type}
+                        <Badge variant="secondary" className="ml-auto">
+                          {Object.values(subgroups).flat().length}
+                        </Badge>
+                      </button>
+                      
+                      {expandedGroups.has(type) && (
+                        <div className="ml-6 space-y-1">
+                          {Object.entries(subgroups).map(([subheading, items]) => (
+                            <div key={subheading} className="space-y-1">
+                              {items.length === 1 && subheading === 'General' ? (
+                                <button
+                                  onClick={() => setSelectedTemplate(items[0])}
+                                  className={`w-full text-left p-2 px-3 rounded-md transition-colors ${
+                                    selectedTemplate?.id === items[0].id
+                                      ? 'bg-primary/20 text-primary border-l-2 border-primary'
+                                      : 'hover:bg-accent'
+                                  }`}
+                                >
+                                  {items[0].doc_name}
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => toggleGroup(`${type}-${subheading}`)}
+                                    className="w-full flex items-center gap-2 p-2 px-3 rounded-md hover:bg-accent/50 transition-colors text-left text-sm font-medium"
+                                  >
+                                    {expandedGroups.has(`${type}-${subheading}`) ? (
+                                      <ChevronDown className="h-3 w-3" />
+                                    ) : (
+                                      <ChevronRight className="h-3 w-3" />
+                                    )}
+                                    {subheading}
+                                  </button>
+                                  
+                                  {expandedGroups.has(`${type}-${subheading}`) && (
+                                    <div className="ml-5 space-y-1">
+                                      {items.map((template) => (
+                                        <button
+                                          key={template.id}
+                                          onClick={() => setSelectedTemplate(template)}
+                                          className={`w-full text-left p-2 px-3 rounded-md transition-colors text-sm ${
+                                            selectedTemplate?.id === template.id
+                                              ? 'bg-primary/20 text-primary border-l-2 border-primary'
+                                              : 'hover:bg-accent'
+                                          }`}
+                                        >
+                                          {template.doc_name}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          <ResizablePanel defaultSize={65} minSize={40}>
+            <ScrollArea className="h-full">
+              {selectedTemplate ? (
+                <div className="p-6 space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold mb-2">{selectedTemplate.doc_name}</h2>
+                    {selectedTemplate.specific_query_heading && (
+                      <p className="text-muted-foreground mb-3">{selectedTemplate.specific_query_heading}</p>
                     )}
-                    <Badge variant="secondary" className="text-xs">
-                      {template.query_type}
-                    </Badge>
+                    <Badge variant="secondary">{selectedTemplate.query_type}</Badge>
+                  </div>
+
+                  <Card className="p-4 bg-accent/30">
+                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                      <span>Replace Placeholders</span>
+                      <span className="text-xs text-muted-foreground font-normal">
+                        (Use {'{placeholder_name}'} in template)
+                      </span>
+                    </h3>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">Ticket ID</label>
+                        <Input
+                          placeholder="e.g., T12345"
+                          value={placeholders.ticket_id}
+                          onChange={(e) => setPlaceholders({ ...placeholders, ticket_id: e.target.value })}
+                          className="h-9"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">Sender Name</label>
+                        <Input
+                          placeholder="e.g., John Doe"
+                          value={placeholders.sender_name}
+                          onChange={(e) => setPlaceholders({ ...placeholders, sender_name: e.target.value })}
+                          className="h-9"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">Receiver Name</label>
+                        <Input
+                          placeholder="e.g., Jane Smith"
+                          value={placeholders.receiver_name}
+                          onChange={(e) => setPlaceholders({ ...placeholders, receiver_name: e.target.value })}
+                          className="h-9"
+                        />
+                      </div>
+                    </div>
+                  </Card>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold">Template Preview</h3>
+                      <Button
+                        onClick={() => handleCopyTemplate(processedTemplateText)}
+                        size="sm"
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy Template
+                      </Button>
+                    </div>
+                    <Card className="p-4 bg-card/50">
+                      <pre className="text-sm whitespace-pre-wrap font-mono text-muted-foreground">
+                        {processedTemplateText}
+                      </pre>
+                    </Card>
                   </div>
                 </div>
-
-                <div className="bg-background/50 rounded-lg p-3 mb-4 max-h-32 overflow-y-auto">
-                  <code className="text-xs text-muted-foreground font-mono break-all">
-                    {template.template_text}
-                  </code>
+              ) : (
+                <div className="flex items-center justify-center h-full p-6">
+                  <p className="text-muted-foreground">Select a template to preview</p>
                 </div>
-
-                <Button
-                  onClick={() => handleCopyTemplate(template)}
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                  size="sm"
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy Template
-                </Button>
-              </Card>
-            ))}
-          </div>
-        )}
+              )}
+            </ScrollArea>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
     </Layout>
   );
