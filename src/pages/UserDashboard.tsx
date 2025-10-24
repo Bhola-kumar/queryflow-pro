@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { DocumentItem } from '@/types';
 import { apiClient } from '@/lib/api';
-import { Copy, Search, Filter, ChevronRight, ChevronDown } from 'lucide-react';
+import { Copy, Search, Filter, FileText, Tag } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -35,7 +35,6 @@ export default function UserDashboard() {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentItem | null>(null);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [placeholders, setPlaceholders] = useState<{ [key: string]: string }>({
     ticket_id: '',
     sender_name: '',
@@ -91,36 +90,6 @@ export default function UserDashboard() {
     setFilteredTemplates(filtered);
   };
 
-  const groupTemplates = (templates: DocumentItem[]): GroupedTemplates => {
-    const grouped: GroupedTemplates = {};
-    
-    templates.forEach((template) => {
-      const type = template.query_type;
-      const subheading = template.specific_query_heading || 'General';
-      
-      if (!grouped[type]) {
-        grouped[type] = {};
-      }
-      
-      if (!grouped[type][subheading]) {
-        grouped[type][subheading] = [];
-      }
-      
-      grouped[type][subheading].push(template);
-    });
-    
-    return grouped;
-  };
-
-  const toggleGroup = (groupKey: string) => {
-    const newExpanded = new Set(expandedGroups);
-    if (newExpanded.has(groupKey)) {
-      newExpanded.delete(groupKey);
-    } else {
-      newExpanded.add(groupKey);
-    }
-    setExpandedGroups(newExpanded);
-  };
 
   const handleCopyTemplate = async (templateText: string) => {
     try {
@@ -153,7 +122,6 @@ export default function UserDashboard() {
   };
 
   const queryTypes = ['all', ...Array.from(new Set(templates.map((t) => t.query_type)))];
-  const groupedTemplates = groupTemplates(filteredTemplates);
   const processedTemplateText = selectedTemplate ? replacePlaceholders(selectedTemplate.template_text) : '';
 
   if (loading) {
@@ -199,85 +167,60 @@ export default function UserDashboard() {
         </div>
 
         <ResizablePanelGroup direction="horizontal" className="flex-1">
-          <ResizablePanel defaultSize={35} minSize={25}>
+          <ResizablePanel defaultSize={50} minSize={30}>
             <ScrollArea className="h-full">
-              <div className="p-4 space-y-2">
-                {Object.keys(groupedTemplates).length === 0 ? (
+              <div className="p-4">
+                {filteredTemplates.length === 0 ? (
                   <Card className="p-8 text-center">
                     <p className="text-muted-foreground">No templates found</p>
                   </Card>
                 ) : (
-                  Object.entries(groupedTemplates).map(([type, subgroups]) => (
-                    <div key={type} className="space-y-1">
-                      <button
-                        onClick={() => toggleGroup(type)}
-                        className="w-full flex items-center gap-2 p-3 rounded-lg hover:bg-accent transition-colors text-left font-semibold"
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredTemplates.map((template) => (
+                      <Card
+                        key={template.id}
+                        onClick={() => setSelectedTemplate(template)}
+                        className={`p-4 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] ${
+                          selectedTemplate?.id === template.id
+                            ? 'border-primary border-2 bg-primary/5 shadow-md'
+                            : 'border-border hover:border-primary/50'
+                        }`}
                       >
-                        {expandedGroups.has(type) ? (
-                          <ChevronDown className="h-4 w-4 text-primary" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                        {type}
-                        <Badge variant="secondary" className="ml-auto">
-                          {Object.values(subgroups).flat().length}
-                        </Badge>
-                      </button>
-                      
-                      {expandedGroups.has(type) && (
-                        <div className="ml-6 space-y-1">
-                          {Object.entries(subgroups).map(([subheading, items]) => (
-                            <div key={subheading} className="space-y-1">
-                              {items.length === 1 && subheading === 'General' ? (
-                                <button
-                                  onClick={() => setSelectedTemplate(items[0])}
-                                  className={`w-full text-left p-2 px-3 rounded-md transition-colors ${
-                                    selectedTemplate?.id === items[0].id
-                                      ? 'bg-primary/20 text-primary border-l-2 border-primary'
-                                      : 'hover:bg-accent'
-                                  }`}
-                                >
-                                  {items[0].doc_name}
-                                </button>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => toggleGroup(`${type}-${subheading}`)}
-                                    className="w-full flex items-center gap-2 p-2 px-3 rounded-md hover:bg-accent/50 transition-colors text-left text-sm font-medium"
-                                  >
-                                    {expandedGroups.has(`${type}-${subheading}`) ? (
-                                      <ChevronDown className="h-3 w-3" />
-                                    ) : (
-                                      <ChevronRight className="h-3 w-3" />
-                                    )}
-                                    {subheading}
-                                  </button>
-                                  
-                                  {expandedGroups.has(`${type}-${subheading}`) && (
-                                    <div className="ml-5 space-y-1">
-                                      {items.map((template) => (
-                                        <button
-                                          key={template.id}
-                                          onClick={() => setSelectedTemplate(template)}
-                                          className={`w-full text-left p-2 px-3 rounded-md transition-colors text-sm ${
-                                            selectedTemplate?.id === template.id
-                                              ? 'bg-primary/20 text-primary border-l-2 border-primary'
-                                              : 'hover:bg-accent'
-                                          }`}
-                                        >
-                                          {template.doc_name}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </>
+                        <div className="flex flex-col gap-3 h-full">
+                          <div className="flex items-start gap-3">
+                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                              selectedTemplate?.id === template.id
+                                ? 'bg-primary/20'
+                                : 'bg-accent'
+                            }`}>
+                              <FileText className={`h-5 w-5 ${
+                                selectedTemplate?.id === template.id
+                                  ? 'text-primary'
+                                  : 'text-muted-foreground'
+                              }`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-sm line-clamp-2 mb-1">
+                                {template.doc_name}
+                              </h3>
+                              {template.specific_query_heading && (
+                                <p className="text-xs text-muted-foreground line-clamp-1">
+                                  {template.specific_query_heading}
+                                </p>
                               )}
                             </div>
-                          ))}
+                          </div>
+                          
+                          <div className="flex items-center gap-2 mt-auto">
+                            <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                              <Tag className="h-3 w-3" />
+                              {template.query_type}
+                            </Badge>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))
+                      </Card>
+                    ))}
+                  </div>
                 )}
               </div>
             </ScrollArea>
@@ -285,7 +228,7 @@ export default function UserDashboard() {
 
           <ResizableHandle withHandle />
 
-          <ResizablePanel defaultSize={65} minSize={40}>
+          <ResizablePanel defaultSize={50} minSize={40}>
             <ScrollArea className="h-full">
               {selectedTemplate ? (
                 <div className="p-6 space-y-6">
