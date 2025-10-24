@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { DocumentItem } from '@/types';
 import { apiClient } from '@/lib/api';
-import { Copy, Search, Filter, FileText, Tag, Plus, X } from 'lucide-react';
+import { Copy, Search, Filter, FileText, Tag, Plus, X, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -16,6 +16,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Select,
   SelectContent,
@@ -49,6 +59,10 @@ export default function UserDashboard() {
     receiver_name: '',
   });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<DocumentItem | null>(null);
+  const [deletingTemplate, setDeletingTemplate] = useState<DocumentItem | null>(null);
   const [newTemplate, setNewTemplate] = useState({
     doc_name: '',
     query_type: '',
@@ -174,6 +188,70 @@ export default function UserDashboard() {
     });
   };
 
+  const handleEditTemplate = (template: DocumentItem) => {
+    setEditingTemplate(template);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateTemplate = async () => {
+    if (!editingTemplate) return;
+    
+    if (!editingTemplate.doc_name || !editingTemplate.query_type || !editingTemplate.template_text) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all required fields.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await apiClient.updateTemplate(editingTemplate.id, {
+        doc_name: editingTemplate.doc_name,
+        query_type: editingTemplate.query_type,
+        specific_query_heading: editingTemplate.specific_query_heading,
+        template_text: editingTemplate.template_text,
+      });
+      toast({
+        title: 'Template Updated',
+        description: 'Template has been updated successfully.',
+      });
+      setIsEditDialogOpen(false);
+      setEditingTemplate(null);
+      fetchTemplates();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update template.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteTemplate = async () => {
+    if (!deletingTemplate) return;
+
+    try {
+      await apiClient.deleteTemplate(deletingTemplate.id);
+      toast({
+        title: 'Template Deleted',
+        description: 'Template has been deleted successfully.',
+      });
+      setIsDeleteDialogOpen(false);
+      setDeletingTemplate(null);
+      if (selectedTemplate?.id === deletingTemplate.id) {
+        setSelectedTemplate(null);
+      }
+      fetchTemplates();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete template.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const queryTypes = ['all', ...Array.from(new Set(templates.map((t) => t.query_type)))];
   const processedTemplateText = selectedTemplate ? replacePlaceholders(selectedTemplate.template_text) : '';
 
@@ -272,11 +350,38 @@ export default function UserDashboard() {
                             </div>
                           </div>
                           
-                          <div className="flex items-center gap-2 mt-auto">
+                          <div className="flex items-center justify-between gap-2 mt-auto">
                             <Badge variant="secondary" className="text-xs flex items-center gap-1">
                               <Tag className="h-3 w-3" />
                               {template.query_type}
                             </Badge>
+                            {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                              <div className="flex gap-1">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditTemplate(template);
+                                  }}
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-destructive hover:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeletingTemplate(template);
+                                    setIsDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </Card>
@@ -424,6 +529,83 @@ export default function UserDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <button
+            onClick={() => setIsEditDialogOpen(false)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
+          <DialogHeader>
+            <DialogTitle>Edit Template</DialogTitle>
+          </DialogHeader>
+          {editingTemplate && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Doc Name *</label>
+                <Input
+                  placeholder="Enter document name"
+                  value={editingTemplate.doc_name}
+                  onChange={(e) => setEditingTemplate({ ...editingTemplate, doc_name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Query Type *</label>
+                <Input
+                  placeholder="e.g., Press Release, Email Template"
+                  value={editingTemplate.query_type}
+                  onChange={(e) => setEditingTemplate({ ...editingTemplate, query_type: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Specific Query Heading (Optional)</label>
+                <Input
+                  placeholder="e.g., Technology, Customer Service"
+                  value={editingTemplate.specific_query_heading || ''}
+                  onChange={(e) => setEditingTemplate({ ...editingTemplate, specific_query_heading: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Template *</label>
+                <Textarea
+                  placeholder="Enter your template text here..."
+                  value={editingTemplate.template_text}
+                  onChange={(e) => setEditingTemplate({ ...editingTemplate, template_text: e.target.value })}
+                  className="min-h-[200px]"
+                />
+              </div>
+            </div>
+          )}
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateTemplate}>
+              Update Template
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{deletingTemplate?.doc_name}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTemplate} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

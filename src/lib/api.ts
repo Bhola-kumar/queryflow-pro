@@ -231,6 +231,33 @@ export class ApiClient {
     return newTemplate;
   }
 
+  async updateTemplate(id: string, data: { doc_name: string; query_type: string; template_text: string; specific_query_heading?: string }): Promise<DocumentItem> {
+    await this.mockDelay();
+    const userId = this.getToken();
+    const templateIndex = DUMMY_TEMPLATES.findIndex(t => t.id === id);
+    
+    if (templateIndex === -1) throw new Error('Template not found');
+    
+    DUMMY_TEMPLATES[templateIndex] = {
+      ...DUMMY_TEMPLATES[templateIndex],
+      doc_name: data.doc_name,
+      query_type: data.query_type,
+      specific_query_heading: data.specific_query_heading,
+      template_text: data.template_text,
+      modified_by: userId,
+      modified_at: new Date().toISOString(),
+    };
+    
+    return DUMMY_TEMPLATES[templateIndex];
+  }
+
+  async deleteTemplate(id: string): Promise<void> {
+    await this.mockDelay();
+    const templateIndex = DUMMY_TEMPLATES.findIndex(t => t.id === id);
+    if (templateIndex === -1) throw new Error('Template not found');
+    DUMMY_TEMPLATES.splice(templateIndex, 1);
+  }
+
   // Role requests endpoints
   async createRoleRequest(data: { requested_role: string; requested_publisher_id?: string }): Promise<RoleRequest> {
     await this.mockDelay();
