@@ -73,12 +73,41 @@ export function Layout({ children }: LayoutProps) {
                 )}
                 
                 {(user.role === 'admin' || user.role === 'superadmin') && (
-                  <Link to={user.role === 'superadmin' ? '/superadmin' : '/admin'}>
-                    <Button variant="ghost" size="sm" className="gap-2">
+                  <>
+                    <button
+                      onClick={() => navigate('/dashboard')}
+                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all relative group ${
+                        isTemplatesActive 
+                          ? 'text-primary' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <FileText className="h-4 w-4" />
+                      Templates
+                      <span 
+                        className={`absolute bottom-0 left-0 w-full h-0.5 bg-primary transition-transform origin-left ${
+                          isTemplatesActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+                        }`}
+                      />
+                    </button>
+                    
+                    <button
+                      onClick={() => navigate(user.role === 'superadmin' ? '/superadmin' : '/admin')}
+                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all relative group ${
+                        (location.pathname === '/admin' || location.pathname === '/superadmin')
+                          ? 'text-primary' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
                       <Settings className="h-4 w-4" />
                       Admin
-                    </Button>
-                  </Link>
+                      <span 
+                        className={`absolute bottom-0 left-0 w-full h-0.5 bg-primary transition-transform origin-left ${
+                          (location.pathname === '/admin' || location.pathname === '/superadmin') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+                        }`}
+                      />
+                    </button>
+                  </>
                 )}
 
                 <DropdownMenu>
