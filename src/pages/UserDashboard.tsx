@@ -7,7 +7,15 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { DocumentItem } from '@/types';
 import { apiClient } from '@/lib/api';
-import { Copy, Search, Filter, FileText, Tag } from 'lucide-react';
+import { Copy, Search, Filter, FileText, Tag, Plus, X } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -40,7 +48,15 @@ export default function UserDashboard() {
     sender_name: '',
     receiver_name: '',
   });
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({
+    doc_name: '',
+    query_type: '',
+    specific_query_heading: '',
+    template_text: '',
+  });
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchTemplates();
@@ -121,6 +137,43 @@ export default function UserDashboard() {
     return result;
   };
 
+  const handleSaveTemplate = async () => {
+    if (!newTemplate.doc_name || !newTemplate.query_type || !newTemplate.template_text) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all required fields.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await apiClient.createTemplate(newTemplate);
+      toast({
+        title: 'Template Created',
+        description: 'New template has been added successfully.',
+      });
+      setIsAddDialogOpen(false);
+      handleClearTemplate();
+      fetchTemplates();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to create template.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleClearTemplate = () => {
+    setNewTemplate({
+      doc_name: '',
+      query_type: '',
+      specific_query_heading: '',
+      template_text: '',
+    });
+  };
+
   const queryTypes = ['all', ...Array.from(new Set(templates.map((t) => t.query_type)))];
   const processedTemplateText = selectedTemplate ? replacePlaceholders(selectedTemplate.template_text) : '';
 
@@ -138,7 +191,15 @@ export default function UserDashboard() {
     <Layout>
       <div className="h-[calc(100vh-4rem)] flex flex-col">
         <div className="p-6 border-b border-border">
-          <h1 className="text-3xl font-bold mb-4">Query Templates</h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold">Query Templates</h1>
+            {(user?.role === 'admin' || user?.role === 'superadmin') && (
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Template
+              </Button>
+            )}
+          </div>
           
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
@@ -305,6 +366,64 @@ export default function UserDashboard() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
+
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <button
+            onClick={() => setIsAddDialogOpen(false)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
+          <DialogHeader>
+            <DialogTitle>Add New Template</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Doc Name *</label>
+              <Input
+                placeholder="Enter document name"
+                value={newTemplate.doc_name}
+                onChange={(e) => setNewTemplate({ ...newTemplate, doc_name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Query Type *</label>
+              <Input
+                placeholder="e.g., Press Release, Email Template"
+                value={newTemplate.query_type}
+                onChange={(e) => setNewTemplate({ ...newTemplate, query_type: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Specific Query Heading (Optional)</label>
+              <Input
+                placeholder="e.g., Technology, Customer Service"
+                value={newTemplate.specific_query_heading}
+                onChange={(e) => setNewTemplate({ ...newTemplate, specific_query_heading: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Template *</label>
+              <Textarea
+                placeholder="Enter your template text here..."
+                value={newTemplate.template_text}
+                onChange={(e) => setNewTemplate({ ...newTemplate, template_text: e.target.value })}
+                className="min-h-[200px]"
+              />
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={handleClearTemplate}>
+              Clear
+            </Button>
+            <Button onClick={handleSaveTemplate}>
+              Save Template
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

@@ -209,6 +209,28 @@ export class ApiClient {
     console.log('Template copied:', templateId);
   }
 
+  async createTemplate(data: { doc_name: string; query_type: string; template_text: string; specific_query_heading?: string }): Promise<DocumentItem> {
+    await this.mockDelay();
+    const userId = this.getToken();
+    const user = DUMMY_USERS.find(u => u.id === userId);
+    
+    const newTemplate: DocumentItem = {
+      id: `temp${Date.now()}`,
+      publisher_id: user?.publisher_id || 'pub1',
+      doc_name: data.doc_name,
+      query_type: data.query_type,
+      specific_query_heading: data.specific_query_heading,
+      template_text: data.template_text,
+      created_by: userId || 'user2',
+      created_at: new Date().toISOString(),
+      modified_by: null,
+      modified_at: new Date().toISOString(),
+    };
+    
+    DUMMY_TEMPLATES.push(newTemplate);
+    return newTemplate;
+  }
+
   // Role requests endpoints
   async createRoleRequest(data: { requested_role: string; requested_publisher_id?: string }): Promise<RoleRequest> {
     await this.mockDelay();
