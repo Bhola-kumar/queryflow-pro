@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
 import { Card } from '@/components/ui/card';
 import { Database, Zap, Shield, TrendingUp, User, Shield as AdminIcon, Crown } from 'lucide-react';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 export default function Landing() {
   const { user, loading, signInWithGoogle } = useAuth();
@@ -56,61 +57,73 @@ export default function Landing() {
           </p>
         </div>
 
-        {/* Sign In Options - Direct Google Login */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
-          <Card className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow group">
-            <div className="text-center space-y-6">
-              <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                <User className="w-8 h-8 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold mb-2">Sign in as User</h3>
-                <p className="text-sm text-muted-foreground mb-6">Access templates and copy queries</p>
-              </div>
-              <div className="flex justify-center">
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess('user')}
-                  onError={() => console.error('Login Failed')}
-                />
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow group">
-            <div className="text-center space-y-6">
-              <div className="w-16 h-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                <AdminIcon className="w-8 h-8 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold mb-2">Sign in as Admin</h3>
-                <p className="text-sm text-muted-foreground mb-6">Manage templates and publishers</p>
-              </div>
-              <div className="flex justify-center">
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess('admin')}
-                  onError={() => console.error('Login Failed')}
-                />
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow group">
-            <div className="text-center space-y-6">
-              <div className="w-16 h-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                <Crown className="w-8 h-8 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold mb-2">Sign in as Superadmin</h3>
-                <p className="text-sm text-muted-foreground mb-6">Full system access and analytics</p>
-              </div>
-              <div className="flex justify-center">
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess('superadmin')}
-                  onError={() => console.error('Login Failed')}
-                />
-              </div>
-            </div>
-          </Card>
+        {/* Sign In Options - Carousel */}
+        <div className="max-w-md mx-auto mb-16">
+          <Carousel className="w-full">
+            <CarouselContent>
+              <CarouselItem>
+                <Card className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow group">
+                  <div className="text-center space-y-6">
+                    <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                      <User className="w-10 h-10 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-semibold mb-2">Sign in as User</h3>
+                      <p className="text-sm text-muted-foreground mb-6">Access templates and copy queries</p>
+                    </div>
+                    <div className="flex justify-center">
+                      <GoogleLogin
+                        onSuccess={handleGoogleSuccess('user')}
+                        onError={() => console.error('Login Failed')}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              </CarouselItem>
+              
+              <CarouselItem>
+                <Card className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow group">
+                  <div className="text-center space-y-6">
+                    <div className="w-20 h-20 bg-secondary/50 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                      <AdminIcon className="w-10 h-10 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-semibold mb-2">Sign in as Admin</h3>
+                      <p className="text-sm text-muted-foreground mb-6">Manage templates and publishers</p>
+                    </div>
+                    <div className="flex justify-center">
+                      <GoogleLogin
+                        onSuccess={handleGoogleSuccess('admin')}
+                        onError={() => console.error('Login Failed')}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              </CarouselItem>
+              
+              <CarouselItem>
+                <Card className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow group">
+                  <div className="text-center space-y-6">
+                    <div className="w-20 h-20 bg-secondary/50 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                      <Crown className="w-10 h-10 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-semibold mb-2">Sign in as Superadmin</h3>
+                      <p className="text-sm text-muted-foreground mb-6">Full system access and analytics</p>
+                    </div>
+                    <div className="flex justify-center">
+                      <GoogleLogin
+                        onSuccess={handleGoogleSuccess('superadmin')}
+                        onError={() => console.error('Login Failed')}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              </CarouselItem>
+            </CarouselContent>
+            <CarouselPrevious className="left-0" />
+            <CarouselNext className="right-0" />
+          </Carousel>
         </div>
 
         <div className="max-w-4xl mx-auto">
