@@ -1,13 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
+import { GoogleLogin } from '@react-oauth/google';
 import { Card } from '@/components/ui/card';
 import { Database, Zap, Shield, TrendingUp, User, Shield as AdminIcon, Crown } from 'lucide-react';
 
 export default function Landing() {
   const { user, loading, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const [selectedRole, setSelectedRole] = useState<'user' | 'admin' | 'superadmin' | null>(null);
 
   useEffect(() => {
     if (user && !loading) {
@@ -21,11 +22,14 @@ export default function Landing() {
     }
   }, [user, loading, navigate]);
 
-  const handleGoogleSignIn = async (role: 'user' | 'admin' | 'superadmin' = 'user') => {
+  const handleRoleSelect = (role: 'user' | 'admin' | 'superadmin') => {
+    localStorage.setItem('user_data', JSON.stringify({ role, publisher_id: '4fe8719c-5687-4a82-9219-96951d0b5c2a' }));
+    setSelectedRole(role);
+  };
+
+  const handleGoogleSuccess = (credentialResponse: any) => {
     try {
-      // Store selected role in localStorage before OAuth
-      localStorage.setItem('user_data', JSON.stringify({ role, publisher_id: '4fe8719c-5687-4a82-9219-96951d0b5c2a' }));
-      await signInWithGoogle();
+      signInWithGoogle(credentialResponse);
     } catch (error) {
       console.error('Sign in failed:', error);
     }
@@ -58,52 +62,86 @@ export default function Landing() {
         </div>
 
         {/* Sign In Options */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
-          <Card 
-            onClick={() => handleGoogleSignIn('user')}
-            className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow cursor-pointer group"
-          >
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                <User className="w-8 h-8 text-primary" />
+        {!selectedRole ? (
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
+            <Card 
+              onClick={() => handleRoleSelect('user')}
+              className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow cursor-pointer group"
+            >
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                  <User className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Sign in as User</h3>
+                  <p className="text-sm text-muted-foreground">Access templates and copy queries</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-semibold mb-2">Sign in as User</h3>
-                <p className="text-sm text-muted-foreground">Access templates and copy queries</p>
+            </Card>
+            
+            <Card 
+              onClick={() => handleRoleSelect('admin')}
+              className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow cursor-pointer group"
+            >
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                  <AdminIcon className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Sign in as Admin</h3>
+                  <p className="text-sm text-muted-foreground">Manage templates and publishers</p>
+                </div>
               </div>
-            </div>
-          </Card>
-          
-          <Card 
-            onClick={() => handleGoogleSignIn('admin')}
-            className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow cursor-pointer group"
-          >
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                <AdminIcon className="w-8 h-8 text-primary" />
+            </Card>
+            
+            <Card 
+              onClick={() => handleRoleSelect('superadmin')}
+              className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow cursor-pointer group"
+            >
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                  <Crown className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Sign in as Superadmin</h3>
+                  <p className="text-sm text-muted-foreground">Full system access and analytics</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-semibold mb-2">Sign in as Admin</h3>
-                <p className="text-sm text-muted-foreground">Manage templates and publishers</p>
+            </Card>
+          </div>
+        ) : (
+          <div className="max-w-md mx-auto mb-16">
+            <Card className="p-8 bg-card/50 backdrop-blur-sm border-border">
+              <div className="text-center space-y-6">
+                <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto">
+                  {selectedRole === 'user' && <User className="w-8 h-8 text-primary" />}
+                  {selectedRole === 'admin' && <AdminIcon className="w-8 h-8 text-primary" />}
+                  {selectedRole === 'superadmin' && <Crown className="w-8 h-8 text-primary" />}
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">
+                    Sign in as {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Complete authentication with Google
+                  </p>
+                  <div className="flex justify-center">
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={() => console.error('Login Failed')}
+                    />
+                  </div>
+                  <button
+                    onClick={() => setSelectedRole(null)}
+                    className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Choose a different role
+                  </button>
+                </div>
               </div>
-            </div>
-          </Card>
-          
-          <Card 
-            onClick={() => handleGoogleSignIn('superadmin')}
-            className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow cursor-pointer group"
-          >
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                <Crown className="w-8 h-8 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold mb-2">Sign in as Superadmin</h3>
-                <p className="text-sm text-muted-foreground">Full system access and analytics</p>
-              </div>
-            </div>
-          </Card>
-        </div>
+            </Card>
+          </div>
+        )}
 
         <div className="max-w-4xl mx-auto">
           {/* Divider */}
