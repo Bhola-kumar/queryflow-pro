@@ -42,7 +42,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 const App = () => (
   <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <AuthProvider>
           <TooltipProvider>
             <Toaster />
