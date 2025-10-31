@@ -1,6 +1,6 @@
-// Mock API client with hardcoded dummy data
+// API client with localStorage persistence
 import { User, DocumentItem, RoleRequest, AnalyticsData, Publisher } from '@/types';
-import documentTemplates from "../data/document_templates.json" assert { type: "json" };
+import documentTemplatesData from "../data/document_templates.json" assert { type: "json" };
 // Dummy data
 const DUMMY_PUBLISHERS: Publisher[] = [
   { id: '4fe8719c-5687-4a82-9219-96951d0b5c2a', name: 'Elsevier RS', created_at: '2025-10-17', updated_at: '2025-10-17' },
@@ -94,9 +94,36 @@ const DUMMY_USERS: User[] = [
 //     modified_at: '2024-01-18',
 //   },
 // ];
-// Replace DUMMY_TEMPLATES with this line
-const DUMMY_TEMPLATES = documentTemplates;
-const DUMMY_ROLE_REQUESTS: RoleRequest[] = [
+
+// Storage helper functions
+const getStorageKey = (key: string) => `query_template_tool_${key}`;
+
+const loadFromStorage = <T>(key: string, defaultValue: T): T => {
+  const stored = localStorage.getItem(getStorageKey(key));
+  return stored ? JSON.parse(stored) : defaultValue;
+};
+
+const saveToStorage = <T>(key: string, data: T): void => {
+  localStorage.setItem(getStorageKey(key), JSON.stringify(data));
+};
+
+// Initialize templates from JSON file and merge with localStorage
+const initializeTemplates = (): DocumentItem[] => {
+  const storedTemplates = loadFromStorage<DocumentItem[]>('templates', []);
+  const templateMap = new Map<string, DocumentItem>();
+  
+  // Add default templates from JSON
+  documentTemplatesData.forEach(t => templateMap.set(t.id, t));
+  
+  // Override with stored templates (user-created or modified)
+  storedTemplates.forEach(t => templateMap.set(t.id, t));
+  
+  return Array.from(templateMap.values());
+};
+
+const DUMMY_TEMPLATES = initializeTemplates();
+// Initialize data from localStorage
+const DUMMY_ROLE_REQUESTS = loadFromStorage<RoleRequest[]>('role_requests', [
   {
     id: 'req1',
     user_id: 'user1',
@@ -106,28 +133,20 @@ const DUMMY_ROLE_REQUESTS: RoleRequest[] = [
     requested_at: '2024-01-20',
     user: DUMMY_USERS[0],
   },
-  {
-    id: 'req2',
-    user_id: 'user4',
-    requested_role: 'admin',
-    requested_publisher_id: 'pub2',
-    status: 'approved',
-    requested_at: '2024-01-18',
-    reviewed_by: 'user3',
-    reviewed_at: '2024-01-19',
-  },
-];
+]);
 
-const DUMMY_ANALYTICS: AnalyticsData = {
-  total_users: 25,
-  total_templates: 48,
-  total_copies: 1250,
-  top_templates: [
-    { document_item_id: 'temp1', doc_name: 'Product Launch Press Release', total_copies: 450 },
-    { document_item_id: 'temp2', doc_name: 'Customer Complaint Response', total_copies: 320 },
-    { document_item_id: 'temp4', doc_name: 'Social Media Post - Product', total_copies: 280 },
-    { document_item_id: 'temp3', doc_name: 'Meeting Minutes Template', total_copies: 200 },
-  ],
+const getAnalyticsData = (): AnalyticsData => {
+  const templates = DUMMY_TEMPLATES;
+  return loadFromStorage<AnalyticsData>('analytics', {
+    total_users: 1,
+    total_templates: templates.length,
+    total_copies: 0,
+    top_templates: templates.slice(0, 4).map(t => ({
+      document_item_id: t.id,
+      doc_name: t.doc_name,
+      total_copies: 0,
+    })),
+  });
 };
 
 export class ApiClient {
@@ -207,7 +226,17 @@ export class ApiClient {
 
   async copyTemplate(templateId: string): Promise<void> {
     await this.mockDelay();
-    console.log('Template copied:', templateId);
+    
+    // Update analytics
+    const analytics = getAnalyticsData();
+    analytics.total_copies += 1;
+    
+    const templateStat = analytics.top_templates.find(t => t.document_item_id === templateId);
+    if (templateStat) {
+      templateStat.total_copies += 1;
+    }
+    
+    saveToStorage('analytics', analytics);
   }
 
   async createTemplate(data: { doc_name: string; query_type: string; template_text: string; specific_query_heading?: string }): Promise<DocumentItem> {
@@ -229,6 +258,13 @@ export class ApiClient {
     };
     
     DUMMY_TEMPLATES.push(newTemplate);
+    saveToStorage('templates', DUMMY_TEMPLATES);
+    
+    // Update analytics
+    const analytics = getAnalyticsData();
+    analytics.total_templates += 1;
+    saveToStorage('analytics', analytics);
+    
     return newTemplate;
   }
 
@@ -249,6 +285,7 @@ export class ApiClient {
       modified_at: new Date().toISOString(),
     };
     
+    saveToStorage('templates', DUMMY_TEMPLATES);
     return DUMMY_TEMPLATES[templateIndex];
   }
 
@@ -257,6 +294,12 @@ export class ApiClient {
     const templateIndex = DUMMY_TEMPLATES.findIndex(t => t.id === id);
     if (templateIndex === -1) throw new Error('Template not found');
     DUMMY_TEMPLATES.splice(templateIndex, 1);
+    saveToStorage('templates', DUMMY_TEMPLATES);
+    
+    // Update analytics
+    const analytics = getAnalyticsData();
+    analytics.total_templates = DUMMY_TEMPLATES.length;
+    saveToStorage('analytics', analytics);
   }
 
   // Role requests endpoints
@@ -276,6 +319,7 @@ export class ApiClient {
     };
     
     DUMMY_ROLE_REQUESTS.push(newRequest);
+    saveToStorage('role_requests', DUMMY_ROLE_REQUESTS);
     return newRequest;
   }
 
@@ -291,13 +335,14 @@ export class ApiClient {
       request.status = status;
       request.reviewed_at = new Date().toISOString();
       request.reviewed_by = this.getToken() || 'user3';
+      saveToStorage('role_requests', DUMMY_ROLE_REQUESTS);
     }
   }
 
   // Analytics endpoints
   async getAnalytics(): Promise<AnalyticsData> {
     await this.mockDelay();
-    return DUMMY_ANALYTICS;
+    return getAnalyticsData();
   }
 
   async getUserActivity(): Promise<{ activities: [] }> {

@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Database, Zap, Shield, TrendingUp, User, Shield as AdminIcon, Crown } from 'lucide-react';
 
 export default function Landing() {
-  const { user, loading, login } = useAuth();
+  const { user, loading, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,9 +23,9 @@ export default function Landing() {
 
   const handleGoogleSignIn = async (role: 'user' | 'admin' | 'superadmin' = 'user') => {
     try {
-      // Simulate Google sign-in with different roles
-      await login(role);
-      // Navigation will be handled by the useEffect
+      // Store selected role in localStorage before OAuth
+      localStorage.setItem('user_data', JSON.stringify({ role, publisher_id: '4fe8719c-5687-4a82-9219-96951d0b5c2a' }));
+      await signInWithGoogle();
     } catch (error) {
       console.error('Sign in failed:', error);
     }

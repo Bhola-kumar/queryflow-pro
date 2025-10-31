@@ -1,62 +1,97 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/types';
-import { apiClient } from '@/lib/api';
+import { supabase } from '@/integrations/supabase/client';
+import { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   loading: boolean;
-  login: (idToken: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   logout: () => void;
-  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshUser = async () => {
-    try {
-      const userData = await apiClient.getCurrentUser() as User;
-      setUser(userData);
-    } catch (error) {
-      console.error('Failed to fetch user:', error);
-      setUser(null);
-      apiClient.clearToken();
+  const mapSupabaseUserToAppUser = (supabaseUser: any): User => {
+    const userData = localStorage.getItem('user_data');
+    let role: 'user' | 'admin' | 'superadmin' = 'user';
+    let publisher_id = '4fe8719c-5687-4a82-9219-96951d0b5c2a';
+    
+    if (userData) {
+      const parsed = JSON.parse(userData);
+      role = parsed.role || 'user';
+      publisher_id = parsed.publisher_id || publisher_id;
     }
+
+    return {
+      id: supabaseUser.id,
+      email: supabaseUser.email || '',
+      full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || '',
+      username: supabaseUser.email?.split('@')[0] || '',
+      role,
+      publisher_id,
+      is_active: true,
+      created_at: supabaseUser.created_at,
+      updated_at: supabaseUser.updated_at || supabaseUser.created_at,
+    };
   };
 
   useEffect(() => {
-    const initAuth = async () => {
-      const token = apiClient.getToken();
-      if (token) {
-        await refreshUser();
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        if (session?.user) {
+          const appUser = mapSupabaseUserToAppUser(session.user);
+          setUser(appUser);
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        const appUser = mapSupabaseUserToAppUser(session.user);
+        setUser(appUser);
       }
       setLoading(false);
-    };
+    });
 
-    initAuth();
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (idToken: string) => {
-    try {
-      const response: any = await apiClient.googleAuth(idToken);
-      apiClient.setToken(response.token);
-      setUser(response.user);
-    } catch (error) {
-      console.error('Login failed:', error);
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+    
+    if (error) {
+      console.error('Google sign-in error:', error);
       throw error;
     }
   };
 
-  const logout = () => {
-    apiClient.logout();
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
+    setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, session, loading, signInWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
