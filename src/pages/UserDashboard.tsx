@@ -40,11 +40,12 @@ import {
 } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-interface GroupedTemplates {
-  [key: string]: {
-    [subheading: string]: DocumentItem[];
-  };
-}
+type PlaceholderEntry = {
+  token: string;
+  key: string;
+  label: string;
+  value: string;
+};
 
 export default function UserDashboard() {
   const [templates, setTemplates] = useState<DocumentItem[]>([]);
@@ -53,11 +54,7 @@ export default function UserDashboard() {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentItem | null>(null);
-  const [placeholders, setPlaceholders] = useState<{ [key: string]: string }>({
-    ticket_id: '',
-    sender_name: '',
-    receiver_name: '',
-  });
+  const [placeholders, setPlaceholders] = useState<PlaceholderEntry[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -85,6 +82,15 @@ export default function UserDashboard() {
       setSelectedTemplate(filteredTemplates[0]);
     }
   }, [filteredTemplates]);
+
+  useEffect(() => {
+    if (selectedTemplate?.template_text) {
+      const extracted = extractPlaceholdersFromText(selectedTemplate.template_text);
+      setPlaceholders(extracted);
+    } else {
+      setPlaceholders([]);
+    }
+  }, [selectedTemplate]);
 
   const fetchTemplates = async () => {
     try {
@@ -120,7 +126,6 @@ export default function UserDashboard() {
     setFilteredTemplates(filtered);
   };
 
-
   const handleCopyTemplate = async (templateText: string) => {
     try {
       await navigator.clipboard.writeText(templateText);
@@ -141,15 +146,59 @@ export default function UserDashboard() {
   };
 
   const replacePlaceholders = (text: string): string => {
+    if (!text || placeholders.length === 0) return text;
     let result = text;
-    Object.entries(placeholders).forEach(([key, value]) => {
-      if (value) {
-        const regex = new RegExp(`\\{${key}\\}`, 'gi');
-        result = result.replace(regex, value);
-      }
+    placeholders.forEach((ph) => {
+      const escapedToken = ph.token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escapedToken, 'gi');
+      result = result.replace(regex, ph.value || '');
     });
     return result;
   };
+
+  const extractPlaceholdersFromText = (text: string): PlaceholderEntry[] => {
+    if (!text) return [];
+
+    const results: PlaceholderEntry[] = [];
+    const seenKeys = new Set<string>();
+
+    const braceRegex = /\{([A-Za-z0-9_\- ]+?)\}/g;
+    let m;
+    while ((m = braceRegex.exec(text)) !== null) {
+      const raw = m[0];
+      const inner = m[1].trim();
+      const key = normalizeKey(inner);
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        results.push({
+          token: raw,
+          key,
+          label: inner,
+          value: '',
+        });
+      }
+    }
+
+    const squareRegex = /\[([^\]]+?)\]/g;
+    while ((m = squareRegex.exec(text)) !== null) {
+      const raw = m[0];
+      const inner = m[1].trim();
+      const key = normalizeKey(inner);
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        results.push({
+          token: raw,
+          key,
+          label: inner,
+          value: '',
+        });
+      }
+    }
+
+    return results;
+  };
+
+  const normalizeKey = (s: string) => s.toLowerCase().replace(/\s+/g, '_').replace(/[^\w_]/g, '');
 
   const handleSaveTemplate = async () => {
     if (!newTemplate.doc_name || !newTemplate.query_type || !newTemplate.template_text) {
@@ -255,6 +304,72 @@ export default function UserDashboard() {
   const queryTypes = ['all', ...Array.from(new Set(templates.map((t) => t.query_type)))];
   const processedTemplateText = selectedTemplate ? replacePlaceholders(selectedTemplate.template_text) : '';
 
+  const handlePlaceholderChange = (index: number, newValue: string) => {
+    setPlaceholders((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], value: newValue };
+      return copy;
+    });
+  };
+
+  // Preview helpers (faded inline tokens + click to focus corresponding input)
+  const placeholderTokenRegex = /(\{[^}]+}|\[[^\]]+\])/g;
+
+  const findPlaceholderEntryByToken = (token: string): PlaceholderEntry | undefined => {
+    const exact = placeholders.find((p) => p.token.toLowerCase() === token.toLowerCase());
+    if (exact) return exact;
+    const inner = token.replace(/^[{[]|[}\]]$/g, '').trim();
+    const key = normalizeKey(inner);
+    return placeholders.find((p) => p.key === key);
+  };
+
+  const focusPlaceholderInput = (token: string) => {
+    const entry = findPlaceholderEntryByToken(token);
+    if (!entry) return;
+    const el = document.getElementById(`ph-input-${entry.key}`) as HTMLInputElement | null;
+    if (el) {
+      el.focus();
+      el.select();
+    }
+  };
+
+  const renderPreviewJSX = (text: string) => {
+    if (!text) return null;
+
+    const parts = text.split(placeholderTokenRegex);
+
+    return parts.map((part, idx) => {
+      if (!part) return null;
+
+      if (placeholderTokenRegex.test(part)) {
+        const entry = findPlaceholderEntryByToken(part);
+        const display = entry ? (entry.value || part) : part;
+        return (
+          <span
+            key={`ph-${idx}-${part}`}
+            onClick={() => focusPlaceholderInput(part)}
+            role="button"
+            aria-label={`Placeholder ${part}`}
+            className="inline-block px-1 py-0.5 rounded-md ml-0 mr-0 align-baseline text-sm cursor-pointer"
+            style={{
+              opacity: 0.6,
+              backgroundColor: 'rgba(250, 204, 21, 0.08)',
+              borderRadius: 6,
+              paddingLeft: 6,
+              paddingRight: 6,
+              marginRight: 4,
+            }}
+            title={entry ? `${entry.label} — click to edit` : 'Placeholder'}
+          >
+            {display}
+          </span>
+        );
+      }
+
+      return <span key={`txt-${idx}`}>{part}</span>;
+    });
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -306,7 +421,7 @@ export default function UserDashboard() {
         </div>
 
         <ResizablePanelGroup direction="horizontal" className="flex-1">
-          <ResizablePanel defaultSize={50} minSize={30}>
+          <ResizablePanel defaultSize={65} minSize={30}>
             <ScrollArea className="h-full">
               <div className="p-4">
                 {filteredTemplates.length === 0 ? (
@@ -315,77 +430,97 @@ export default function UserDashboard() {
                   </Card>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredTemplates.map((template) => (
-                      <Card
-                        key={template.id}
-                        onClick={() => setSelectedTemplate(template)}
-                        className={`p-4 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] ${
-                          selectedTemplate?.id === template.id
-                            ? 'border-primary border-2 bg-primary/5 shadow-md'
-                            : 'border-border hover:border-primary/50'
-                        }`}
-                      >
-                        <div className="flex flex-col gap-3 h-full">
-                          <div className="flex items-start gap-3">
-                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                              selectedTemplate?.id === template.id
-                                ? 'bg-primary/20'
-                                : 'bg-accent'
-                            }`}>
-                              <FileText className={`h-5 w-5 ${
-                                selectedTemplate?.id === template.id
-                                  ? 'text-primary'
-                                  : 'text-muted-foreground'
-                              }`} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-sm line-clamp-2 mb-1">
-                                {template.doc_name}
-                              </h3>
-                              {template.specific_query_heading && (
-                                <p className="text-xs text-muted-foreground line-clamp-1">
-                                  {template.specific_query_heading}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center justify-between gap-2 mt-auto">
-                            <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                              <Tag className="h-3 w-3" />
-                              {template.query_type}
-                            </Badge>
-                            {(user?.role === 'admin' || user?.role === 'superadmin') && (
-                              <div className="flex gap-1">
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditTemplate(template);
-                                  }}
-                                >
-                                  <Edit className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7 text-destructive hover:text-destructive"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeletingTemplate(template);
-                                    setIsDeleteDialogOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
+                   {filteredTemplates.map((template) => (
+  <Card
+    key={template.id}
+    onClick={() => setSelectedTemplate(template)}
+    className={`group relative p-4 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] ${
+      selectedTemplate?.id === template.id
+        ? 'border-primary border-2 bg-primary/5 shadow-md'
+        : 'border-border hover:border-primary/50'
+    }`}
+  >
+    {/* Hover-reveal admin controls — match bg to card color */}
+    {(user?.role === 'admin' || user?.role === 'superadmin') && (
+      <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="flex items-center gap-1 bg-card rounded-md p-0.5 ">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 p-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditTemplate(template);
+            }}
+            aria-label="Edit template"
+            title="Edit template"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeletingTemplate(template);
+              setIsDeleteDialogOpen(true);
+            }}
+            aria-label="Delete template"
+            title="Delete template"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    )}
+
+    {/* Card content */}
+    <div className="flex flex-col gap-3 h-full">
+      <div className="flex items-start gap-3">
+        <div
+          className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+            selectedTemplate?.id === template.id ? 'bg-primary/20' : 'bg-accent'
+          }`}
+        >
+          <FileText
+            className={`h-5 w-5 ${
+              selectedTemplate?.id === template.id
+                ? 'text-primary'
+                : 'text-muted-foreground'
+            }`}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-sm line-clamp-2 mb-1">
+            {template.doc_name}
+          </h3>
+          {template.specific_query_heading && (
+            <p className="text-xs text-muted-foreground line-clamp-1">
+              {template.specific_query_heading}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Badge below */}
+      <div className="mt-auto">
+        <Badge
+          variant="secondary"
+          className="text-xs flex items-start gap-1 px-2 py-0.5 rounded-md leading-tight"
+        >
+          <Tag className="h-3 w-3 mt-[1px] flex-shrink-0" />
+          <span className="leading-tight break-words">
+            {template.query_type}
+          </span>
+        </Badge>
+      </div>
+    </div>
+  </Card>
+))}
+
+
+
                   </div>
                 )}
               </div>
@@ -394,7 +529,7 @@ export default function UserDashboard() {
 
           <ResizableHandle withHandle />
 
-          <ResizablePanel defaultSize={50} minSize={40}>
+          <ResizablePanel defaultSize={35} minSize={40}>
             <ScrollArea className="h-full">
               {selectedTemplate ? (
                 <div className="p-6 space-y-6">
@@ -403,45 +538,43 @@ export default function UserDashboard() {
                     {selectedTemplate.specific_query_heading && (
                       <p className="text-muted-foreground mb-3">{selectedTemplate.specific_query_heading}</p>
                     )}
-                    <Badge variant="secondary">{selectedTemplate.query_type}</Badge>
+                    <Badge
+                      variant="secondary"
+                      className="text-xs flex items-start gap-1 px-2 py-0.5 rounded-md leading-tight"
+                    >
+                      <Tag className="h-3 w-3 mt-[1px] flex-shrink-0" />
+                      <span className="leading-tight break-words">{selectedTemplate.query_type}</span>
+                    </Badge>
                   </div>
 
                   <Card className="p-4 bg-accent/30">
                     <h3 className="font-semibold mb-3 flex items-center gap-2">
                       <span>Replace Placeholders</span>
                       <span className="text-xs text-muted-foreground font-normal">
-                        (Use {'{placeholder_name}'} in template)
+                        (Supports {'{name}'} and {'[Name]'} tokens)
                       </span>
                     </h3>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div>
-                        <label className="text-xs text-muted-foreground mb-1 block">Ticket ID</label>
-                        <Input
-                          placeholder="e.g., T12345"
-                          value={placeholders.ticket_id}
-                          onChange={(e) => setPlaceholders({ ...placeholders, ticket_id: e.target.value })}
-                          className="h-9"
-                        />
+
+                    {placeholders.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No placeholders detected in this template.</p>
+                    ) : (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {placeholders.map((ph, idx) => (
+                          <div key={ph.key}>
+                            <label className="text-xs text-muted-foreground mb-1 block">
+                              {ph.label} <span className="text-xxs text-muted-foreground">({ph.token})</span>
+                            </label>
+                            <Input
+                              id={`ph-input-${ph.key}`}
+                              placeholder={`Enter ${ph.label}`}
+                              value={ph.value}
+                              onChange={(e) => handlePlaceholderChange(idx, e.target.value)}
+                              className="h-9"
+                            />
+                          </div>
+                        ))}
                       </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground mb-1 block">Sender Name</label>
-                        <Input
-                          placeholder="e.g., John Doe"
-                          value={placeholders.sender_name}
-                          onChange={(e) => setPlaceholders({ ...placeholders, sender_name: e.target.value })}
-                          className="h-9"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground mb-1 block">Receiver Name</label>
-                        <Input
-                          placeholder="e.g., Jane Smith"
-                          value={placeholders.receiver_name}
-                          onChange={(e) => setPlaceholders({ ...placeholders, receiver_name: e.target.value })}
-                          className="h-9"
-                        />
-                      </div>
-                    </div>
+                    )}
                   </Card>
 
                   <div>
@@ -456,9 +589,12 @@ export default function UserDashboard() {
                       </Button>
                     </div>
                     <Card className="p-4 bg-card/50">
-                      <pre className="text-sm whitespace-pre-wrap font-mono text-muted-foreground">
-                        {processedTemplateText}
-                      </pre>
+                      <div
+                        className="text-sm font-mono text-muted-foreground"
+                        style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                      >
+                        {renderPreviewJSX(selectedTemplate?.template_text || '')}
+                      </div>
                     </Card>
                   </div>
                 </div>

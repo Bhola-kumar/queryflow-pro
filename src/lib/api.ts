@@ -1,106 +1,107 @@
 // Mock API client with hardcoded dummy data
 import { User, DocumentItem, RoleRequest, AnalyticsData, Publisher } from '@/types';
-
+import documentTemplates from "../data/document_templates.json" assert { type: "json" };
 // Dummy data
 const DUMMY_PUBLISHERS: Publisher[] = [
-  { id: 'pub1', name: 'Tech Publishing', created_at: '2024-01-01', updated_at: '2024-01-01' },
-  { id: 'pub2', name: 'Science Daily', created_at: '2024-01-02', updated_at: '2024-01-02' },
-  { id: 'pub3', name: 'News Corp', created_at: '2024-01-03', updated_at: '2024-01-03' },
+  { id: '4fe8719c-5687-4a82-9219-96951d0b5c2a', name: 'Elsevier RS', created_at: '2025-10-17', updated_at: '2025-10-17' },
+  { id: 'pub2', name: 'Cengage', created_at: '2025-10-17', updated_at: '2025-10-17' },
+  { id: 'pub3', name: 'Elsevier Scopus', created_at: '2025-10-17', updated_at: '2025-10-17' },
 ];
 
 const DUMMY_USERS: User[] = [
   {
     id: 'user1',
-    publisher_id: 'pub1',
+    publisher_id: '4fe8719c-5687-4a82-9219-96951d0b5c2a',
     username: 'john_doe',
     email: 'john@example.com',
     full_name: 'John Doe',
     role: 'user',
     is_active: true,
-    created_at: '2024-01-01',
-    updated_at: '2024-01-01',
+    created_at: '2024-10-29',
+    updated_at: '2024-10-29',
   },
   {
     id: 'user2',
-    publisher_id: 'pub1',
+    publisher_id: '4fe8719c-5687-4a82-9219-96951d0b5c2a',
     username: 'admin_user',
     email: 'admin@example.com',
     full_name: 'Admin User',
     role: 'admin',
     is_active: true,
-    created_at: '2024-01-02',
-    updated_at: '2024-01-02',
+    created_at: '2024-10-29',
+    updated_at: '2024-10-29',
   },
   {
     id: 'user3',
-    publisher_id: 'pub1',
+    publisher_id: '4fe8719c-5687-4a82-9219-96951d0b5c2a',
     username: 'super_admin',
     email: 'superadmin@example.com',
     full_name: 'Super Admin',
     role: 'superadmin',
     is_active: true,
-    created_at: '2024-01-03',
-    updated_at: '2024-01-03',
+    created_at: '2024-10-29',
+    updated_at: '2024-10-29',
   },
 ];
 
-const DUMMY_TEMPLATES: DocumentItem[] = [
-  {
-    id: 'temp1',
-    publisher_id: 'pub1',
-    doc_name: 'Product Launch Press Release',
-    query_type: 'Press Release',
-    specific_query_heading: 'Technology',
-    template_text: 'FOR IMMEDIATE RELEASE\n\n[Company Name] Announces Revolutionary [Product Name]\n\n[City, Date] - [Company] today unveiled [product], marking a significant milestone in [industry]...',
-    created_by: 'user2',
-    created_at: '2024-01-15',
-    modified_by: null,
-    modified_at: '2024-01-15',
-  },
-  {
-    id: 'temp2',
-    publisher_id: 'pub1',
-    doc_name: 'Customer Complaint Response',
-    query_type: 'Email Template',
-    specific_query_heading: 'Customer Service',
-    template_text: 'Dear [Customer Name],\n\nThank you for bringing this matter to our attention. We sincerely apologize for any inconvenience caused...',
-    created_by: 'user2',
-    created_at: '2024-01-16',
-    modified_by: null,
-    modified_at: '2024-01-16',
-  },
-  {
-    id: 'temp3',
-    publisher_id: 'pub2',
-    doc_name: 'Meeting Minutes Template',
-    query_type: 'Document',
-    specific_query_heading: 'Administrative',
-    template_text: 'MEETING MINUTES\n\nDate: [Date]\nTime: [Time]\nAttendees: [List]\n\nAgenda Items:\n1. [Item 1]\n2. [Item 2]...',
-    created_by: 'user2',
-    created_at: '2024-01-17',
-    modified_by: null,
-    modified_at: '2024-01-17',
-  },
-  {
-    id: 'temp4',
-    publisher_id: 'pub1',
-    doc_name: 'Social Media Post - Product',
-    query_type: 'Social Media',
-    specific_query_heading: 'Marketing',
-    template_text: '🚀 Exciting news! [Product Name] is here to revolutionize the way you [benefit].\n\n✨ Key features:\n• [Feature 1]\n• [Feature 2]\n\nLearn more: [link]',
-    created_by: 'user2',
-    created_at: '2024-01-18',
-    modified_by: null,
-    modified_at: '2024-01-18',
-  },
-];
-
+// const DUMMY_TEMPLATES: DocumentItem[] = [
+//   {
+//     id: 'temp1',
+//     publisher_id: '4fe8719c-5687-4a82-9219-96951d0b5c2a',
+//     doc_name: 'Product Launch Press Release',
+//     query_type: 'Press Release',
+//     specific_query_heading: 'Technology',
+//     template_text: 'FOR IMMEDIATE RELEASE\n\n[Company Name] Announces Revolutionary [Product Name]\n\n[City, Date] - [Company] today unveiled [product], marking a significant milestone in [industry]...',
+//     created_by: 'user2',
+//     created_at: '2024-01-15',
+//     modified_by: null,
+//     modified_at: '2024-01-15',
+//   },
+//   {
+//     id: 'temp2',
+//     publisher_id: '4fe8719c-5687-4a82-9219-96951d0b5c2a',
+//     doc_name: 'Customer Complaint Response',
+//     query_type: 'Email Template',
+//     specific_query_heading: 'Customer Service',
+//     template_text: 'Dear [Customer Name],\n\nThank you for bringing this matter to our attention. We sincerely apologize for any inconvenience caused...',
+//     created_by: 'user2',
+//     created_at: '2024-01-16',
+//     modified_by: null,
+//     modified_at: '2024-01-16',
+//   },
+//   {
+//     id: 'temp3',
+//     publisher_id: 'pub2',
+//     doc_name: 'Meeting Minutes Template',
+//     query_type: 'Document',
+//     specific_query_heading: 'Administrative',
+//     template_text: 'MEETING MINUTES\n\nDate: [Date]\nTime: [Time]\nAttendees: [List]\n\nAgenda Items:\n1. [Item 1]\n2. [Item 2]...',
+//     created_by: 'user2',
+//     created_at: '2024-01-17',
+//     modified_by: null,
+//     modified_at: '2024-01-17',
+//   },
+//   {
+//     id: 'temp4',
+//     publisher_id: '4fe8719c-5687-4a82-9219-96951d0b5c2a',
+//     doc_name: 'Social Media Post - Product',
+//     query_type: 'Social Media',
+//     specific_query_heading: 'Marketing',
+//     template_text: '🚀 Exciting news! [Product Name] is here to revolutionize the way you [benefit].\n\n✨ Key features:\n• [Feature 1]\n• [Feature 2]\n\nLearn more: [link]',
+//     created_by: 'user2',
+//     created_at: '2024-01-18',
+//     modified_by: null,
+//     modified_at: '2024-01-18',
+//   },
+// ];
+// Replace DUMMY_TEMPLATES with this line
+const DUMMY_TEMPLATES = documentTemplates;
 const DUMMY_ROLE_REQUESTS: RoleRequest[] = [
   {
     id: 'req1',
     user_id: 'user1',
     requested_role: 'admin',
-    requested_publisher_id: 'pub1',
+    requested_publisher_id: '4fe8719c-5687-4a82-9219-96951d0b5c2a',
     status: 'pending',
     requested_at: '2024-01-20',
     user: DUMMY_USERS[0],
@@ -216,7 +217,7 @@ export class ApiClient {
     
     const newTemplate: DocumentItem = {
       id: `temp${Date.now()}`,
-      publisher_id: user?.publisher_id || 'pub1',
+      publisher_id: user?.publisher_id || '4fe8719c-5687-4a82-9219-96951d0b5c2a',
       doc_name: data.doc_name,
       query_type: data.query_type,
       specific_query_heading: data.specific_query_heading,
@@ -267,7 +268,7 @@ export class ApiClient {
     const newRequest: RoleRequest = {
       id: `req${Date.now()}`,
       user_id: userId || 'user1',
-      requested_role: data.requested_role as any,
+      requested_role: data.requested_role as 'user' | 'admin' | 'superadmin',
       requested_publisher_id: data.requested_publisher_id,
       status: 'pending',
       requested_at: new Date().toISOString(),
@@ -299,7 +300,7 @@ export class ApiClient {
     return DUMMY_ANALYTICS;
   }
 
-  async getUserActivity(): Promise<any> {
+  async getUserActivity(): Promise<{ activities: [] }> {
     await this.mockDelay();
     return { activities: [] };
   }

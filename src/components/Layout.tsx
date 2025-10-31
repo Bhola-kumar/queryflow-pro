@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Database, LogOut, Settings, FileText } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface LayoutProps {
   children: ReactNode;
@@ -52,7 +53,8 @@ export function Layout({ children }: LayoutProps) {
             </Link>
 
             {user && (
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <ThemeToggle />
                 {user.role === 'user' && (
                   <button
                     onClick={() => navigate('/dashboard')}
