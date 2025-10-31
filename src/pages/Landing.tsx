@@ -1,14 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
 import { Card } from '@/components/ui/card';
 import { Database, Zap, Shield, TrendingUp, User, Shield as AdminIcon, Crown } from 'lucide-react';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from '@/components/ui/carousel';
 
 export default function Landing() {
   const { user, loading, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
 
   useEffect(() => {
     if (user && !loading) {
@@ -21,6 +23,16 @@ export default function Landing() {
       }
     }
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (!api) return;
+
+    setCurrent(api.selectedScrollSnap());
+
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap());
+    });
+  }, [api]);
 
   const handleGoogleSuccess = (role: 'user' | 'admin' | 'superadmin') => (credentialResponse: any) => {
     try {
@@ -57,21 +69,44 @@ export default function Landing() {
           </p>
         </div>
 
-        {/* Sign In Options - Carousel */}
-        <div className="max-w-md mx-auto mb-16">
-          <Carousel className="w-full">
+        {/* Sign In Options - Single Card with Role Slider */}
+        <div className="max-w-lg mx-auto mb-16 animate-fade-in">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+              Choose Your Role
+            </h2>
+            <p className="text-sm text-muted-foreground">Slide to select your access level</p>
+          </div>
+          
+          <Carousel
+            setApi={setApi}
+            opts={{
+              align: "center",
+              loop: true,
+            }}
+            className="w-full"
+          >
             <CarouselContent>
+              {/* User Card */}
               <CarouselItem>
-                <Card className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow group">
-                  <div className="text-center space-y-6">
-                    <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                      <User className="w-10 h-10 text-primary" />
+                <Card className="group relative overflow-hidden border-2 border-border hover:border-primary transition-all duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
+                  <div className="relative p-6 text-center space-y-4">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
+                      <div className="relative w-16 h-16 mx-auto rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                        <User className="w-8 h-8 text-primary" />
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-2xl font-semibold mb-2">Sign in as User</h3>
-                      <p className="text-sm text-muted-foreground mb-6">Access templates and copy queries</p>
+                    
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold">Sign in as User</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Access templates and copy queries for your daily work
+                      </p>
                     </div>
-                    <div className="flex justify-center">
+                    
+                    <div className="pt-2 flex justify-center">
                       <GoogleLogin
                         onSuccess={handleGoogleSuccess('user')}
                         onError={() => console.error('Login Failed')}
@@ -80,18 +115,27 @@ export default function Landing() {
                   </div>
                 </Card>
               </CarouselItem>
-              
+
+              {/* Admin Card */}
               <CarouselItem>
-                <Card className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow group">
-                  <div className="text-center space-y-6">
-                    <div className="w-20 h-20 bg-secondary/50 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                      <AdminIcon className="w-10 h-10 text-primary" />
+                <Card className="group relative overflow-hidden border-2 border-border hover:border-primary transition-all duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
+                  <div className="relative p-6 text-center space-y-4">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
+                      <div className="relative w-16 h-16 mx-auto rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                        <AdminIcon className="w-8 h-8 text-primary" />
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-2xl font-semibold mb-2">Sign in as Admin</h3>
-                      <p className="text-sm text-muted-foreground mb-6">Manage templates and publishers</p>
+                    
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold">Sign in as Admin</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Manage templates, publishers, and team members
+                      </p>
                     </div>
-                    <div className="flex justify-center">
+                    
+                    <div className="pt-2 flex justify-center">
                       <GoogleLogin
                         onSuccess={handleGoogleSuccess('admin')}
                         onError={() => console.error('Login Failed')}
@@ -100,18 +144,27 @@ export default function Landing() {
                   </div>
                 </Card>
               </CarouselItem>
-              
+
+              {/* Superadmin Card */}
               <CarouselItem>
-                <Card className="p-8 bg-card/50 backdrop-blur-sm border-border hover:border-primary/50 transition-all hover:shadow-glow group">
-                  <div className="text-center space-y-6">
-                    <div className="w-20 h-20 bg-secondary/50 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                      <Crown className="w-10 h-10 text-primary" />
+                <Card className="group relative overflow-hidden border-2 border-border hover:border-primary transition-all duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
+                  <div className="relative p-6 text-center space-y-4">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
+                      <div className="relative w-16 h-16 mx-auto rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                        <Crown className="w-8 h-8 text-primary" />
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-2xl font-semibold mb-2">Sign in as Superadmin</h3>
-                      <p className="text-sm text-muted-foreground mb-6">Full system access and analytics</p>
+                    
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-bold">Sign in as Superadmin</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Full system access with global analytics control
+                      </p>
                     </div>
-                    <div className="flex justify-center">
+                    
+                    <div className="pt-2 flex justify-center">
                       <GoogleLogin
                         onSuccess={handleGoogleSuccess('superadmin')}
                         onError={() => console.error('Login Failed')}
@@ -121,9 +174,23 @@ export default function Landing() {
                 </Card>
               </CarouselItem>
             </CarouselContent>
-            <CarouselPrevious className="left-0" />
-            <CarouselNext className="right-0" />
           </Carousel>
+
+          {/* Role Indicators */}
+          <div className="flex items-center justify-center gap-2 mt-6">
+            {['User', 'Admin', 'Superadmin'].map((role, index) => (
+              <button
+                key={role}
+                onClick={() => api?.scrollTo(index)}
+                className={`transition-all duration-300 ${
+                  current === index
+                    ? 'w-8 h-2 bg-primary rounded-full'
+                    : 'w-2 h-2 bg-muted-foreground/30 hover:bg-muted-foreground/50 rounded-full'
+                }`}
+                aria-label={`Select ${role} role`}
+              />
+            ))}
+          </div>
         </div>
 
         <div className="max-w-4xl mx-auto">
